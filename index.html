@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Bloom</title>
+
+<!-- Home-screen app behaviour on iPhone -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bloom">
+<meta name="theme-color" content="#4A2C46">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<link rel="icon" href="./icon-192.png">
+<link rel="manifest" href="./manifest.webmanifest">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#FBF6EF; --surface:#FFFFFF; --surface-2:#FCF8F2;
+  --ink:#34232F; --muted:#857482;
+  --coral:#E2735B; --coral-deep:#C25540;
+  --plum:#4A2C46; --leaf:#5B8C5A; --leaf-deep:#446b3f;
+  --gold:#E0A458;
+  --line:rgba(74,44,70,.10); --line-strong:rgba(74,44,70,.16);
+  --shadow:0 6px 24px rgba(74,44,70,.08);
+  --tabh:64px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  font-size:16px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:calc(var(--tabh) + env(safe-area-inset-bottom));
+}
+h1,h2,h3{font-family:'Fraunces',serif; font-weight:600; margin:0; line-height:1.12; letter-spacing:-.01em}
+.eyebrow{font-size:12px; letter-spacing:.14em; text-transform:uppercase; font-weight:600; color:var(--coral)}
+.muted{color:var(--muted)}
+
+/* ---------- top bar ---------- */
+.topbar{
+  position:sticky; top:0; z-index:20;
+  padding:calc(env(safe-area-inset-top) + 14px) 20px 14px;
+  background:linear-gradient(var(--bg) 72%, rgba(251,246,239,0));
+  display:flex; align-items:center; gap:10px;
+}
+.brandmark{width:30px;height:30px;border-radius:9px;display:block;box-shadow:0 2px 6px rgba(74,44,70,.18)}
+.brandname{font-family:'Fraunces',serif;font-weight:600;font-size:21px;letter-spacing:-.02em}
+.brandname b{color:var(--coral);font-weight:600}
+
+/* ---------- views ---------- */
+.view{display:none; padding:4px 20px 28px; animation:fade .35s ease both}
+.view.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.view,.card-body{animation:none!important;transition:none!important}}
+
+/* ---------- hero ---------- */
+.hero{
+  position:relative; overflow:hidden; border-radius:24px; padding:26px 22px 24px;
+  background:
+    radial-gradient(120% 90% at 85% 0%, rgba(224,164,88,.32), transparent 60%),
+    linear-gradient(150deg, var(--coral) 0%, #b9573f 55%, var(--plum) 100%);
+  color:#fff7f1; box-shadow:var(--shadow); margin-top:4px;
+}
+.hero h1{font-size:30px; color:#fff; margin:8px 0 8px}
+.hero p{margin:0; color:#ffeede; font-size:15px; max-width:30ch}
+.hero .leaf-deco{position:absolute; right:-26px; bottom:-30px; width:150px; height:150px; opacity:.18}
+
+/* week strip */
+.weekstrip{display:flex; gap:8px; margin:16px 0 6px}
+.daydot{flex:1; text-align:center; background:var(--surface); border:1px solid var(--line);
+  border-radius:14px; padding:10px 0 9px; box-shadow:var(--shadow)}
+.daydot .d{font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--muted)}
+.daydot .ring{width:22px;height:22px;border-radius:50%;border:2px solid var(--line-strong);margin:7px auto 0;
+  display:flex;align-items:center;justify-content:center;transition:all .2s}
+.daydot.today{border-color:var(--coral); box-shadow:0 0 0 2px rgba(226,115,91,.18),var(--shadow)}
+.daydot.today .d{color:var(--coral)}
+.daydot.done .ring{background:var(--leaf); border-color:var(--leaf)}
+.daydot.done .ring svg{display:block}
+.daydot .ring svg{display:none;width:12px;height:12px}
+
+/* ---------- generic card ---------- */
+.card{background:var(--surface); border:1px solid var(--line); border-radius:20px;
+  box-shadow:var(--shadow); margin:14px 0; overflow:hidden}
+.section-title{display:flex; align-items:baseline; gap:10px; margin:26px 2px 2px}
+.section-title h2{font-size:23px}
+.section-sub{margin:3px 2px 8px; font-size:14px}
+
+/* expandable day */
+.day{cursor:pointer; user-select:none}
+.day-head{display:flex; align-items:center; gap:13px; padding:16px 16px}
+.pill{flex:none; width:46px; height:46px; border-radius:13px; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; background:var(--surface-2); border:1px solid var(--line)}
+.pill .dow{font-size:10px; font-weight:700; letter-spacing:.05em; color:var(--coral); line-height:1}
+.pill .num{font-family:'Fraunces',serif; font-weight:600; font-size:18px; line-height:1.1}
+.day-head .meta{flex:1; min-width:0}
+.day-head .meta h3{font-size:16.5px}
+.day-head .meta .sub{font-size:12.5px; color:var(--muted); margin-top:2px}
+.chev{flex:none; color:var(--muted); transition:transform .28s ease}
+.day.open .chev{transform:rotate(180deg)}
+.card-body{max-height:0; overflow:hidden; transition:max-height .36s cubic-bezier(.4,0,.2,1)}
+.card-body-inner{padding:2px 16px 18px}
+.why{font-size:13.5px; background:var(--surface-2); border:1px dashed var(--line-strong);
+  border-radius:13px; padding:10px 12px; margin:2px 0 14px; color:#5e4d59}
+.why b{color:var(--leaf-deep)}
+
+/* video buttons */
+.vid{display:flex; align-items:center; gap:13px; text-decoration:none; color:inherit;
+  background:var(--surface-2); border:1px solid var(--line); border-radius:14px;
+  padding:12px 13px; margin-bottom:9px; transition:transform .12s, border-color .2s}
+.vid:active{transform:scale(.985); border-color:var(--coral)}
+.play{flex:none; width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg,var(--coral),var(--coral-deep)); color:#fff}
+.play svg{width:17px;height:17px;margin-left:2px}
+.vid .vt{flex:1; min-width:0}
+.vid .vt .name{font-weight:600; font-size:14.5px}
+.vid .vt .src{font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:5px; margin-top:1px}
+.vid .arr{color:var(--muted); flex:none}
+
+/* mark done */
+.donebtn{width:100%; margin-top:6px; border:0; border-radius:13px; padding:12px;
+  font-family:inherit; font-weight:600; font-size:14.5px; cursor:pointer;
+  background:var(--surface-2); color:var(--leaf-deep); border:1.5px solid var(--leaf);
+  display:flex; align-items:center; justify-content:center; gap:8px; transition:.15s}
+.donebtn:active{transform:scale(.99)}
+.donebtn.is-done{background:var(--leaf); color:#fff; border-color:var(--leaf)}
+
+/* cues row */
+.cues{display:flex; flex-wrap:wrap; gap:7px; margin:12px 0 4px}
+.cue{font-size:12px; background:#fff; border:1px solid var(--line); border-radius:999px;
+  padding:5px 11px; color:#5e4d59}
+.cue b{color:var(--coral-deep)}
+
+/* meal blocks */
+.meal{display:flex; gap:11px; padding:11px 0; border-top:1px solid var(--line)}
+.meal:first-child{border-top:0}
+.meal .ic{flex:none; width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:15px;
+  background:var(--surface-2); border:1px solid var(--line)}
+.meal .mt{flex:1}
+.meal .mt .label{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--coral)}
+.meal .mt .food{font-size:14.5px; margin-top:1px}
+
+/* principles list */
+.rules{list-style:none; margin:0; padding:0}
+.rules li{display:flex; gap:11px; padding:11px 0; border-top:1px solid var(--line); font-size:14.5px}
+.rules li:first-child{border-top:0}
+.rules .n{flex:none; width:25px;height:25px;border-radius:8px;background:var(--leaf);color:#fff;
+  font-weight:700;font-size:12.5px;display:flex;align-items:center;justify-content:center;font-family:'Inter'}
+.plate{display:flex; gap:0; border-radius:13px; overflow:hidden; margin:14px 0 4px; border:1px solid var(--line); font-size:12px; font-weight:600; text-align:center; color:#fff}
+.plate span{padding:9px 4px}
+.plate .veg{background:var(--leaf); flex:2}
+.plate .pro{background:var(--coral); flex:1}
+.plate .carb{background:var(--gold); flex:1}
+
+/* care / safety */
+.care-card{padding:16px 16px}
+.care-card h3{font-size:16px; margin-bottom:8px; display:flex; align-items:center; gap:8px}
+.care-list{margin:0; padding-left:2px; list-style:none}
+.care-list li{position:relative; padding:6px 0 6px 22px; font-size:14.5px; border-top:1px solid var(--line)}
+.care-list li:first-child{border-top:0}
+.care-list li::before{content:""; position:absolute; left:2px; top:13px; width:8px;height:8px;border-radius:50%;background:var(--leaf)}
+.alert{border-color:rgba(194,85,64,.4); background:#fdf3f0}
+.alert h3{color:var(--coral-deep)}
+.alert .care-list li::before{background:var(--coral-deep)}
+.disclaimer{font-size:12.5px; color:var(--muted); padding:4px 4px 0; line-height:1.55}
+
+/* reset */
+.reset{display:block; margin:18px auto 4px; background:none; border:0; color:var(--muted);
+  font-family:inherit; font-size:13px; text-decoration:underline; cursor:pointer}
+
+/* ---------- tab bar ---------- */
+.tabbar{position:fixed; left:0; right:0; bottom:0; z-index:30;
+  height:calc(var(--tabh) + env(safe-area-inset-bottom));
+  padding-bottom:env(safe-area-inset-bottom);
+  background:rgba(255,255,255,.86); backdrop-filter:saturate(180%) blur(14px);
+  -webkit-backdrop-filter:saturate(180%) blur(14px);
+  border-top:1px solid var(--line); display:flex}
+.tab{flex:1; background:none; border:0; font-family:inherit; cursor:pointer; color:var(--muted);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding-top:8px}
+.tab svg{width:23px;height:23px}
+.tab span{font-size:10.5px; font-weight:600; letter-spacing:.02em}
+.tab.active{color:var(--coral)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <img src="./icon-192.png" class="brandmark" alt="">
+  <div class="brandname"><b>Bloom</b></div>
+</div>
+
+<!-- ================= TODAY ================= -->
+<section class="view active" id="view-today">
+  <div class="hero">
+    <svg class="leaf-deco" viewBox="0 0 100 100" fill="#fff"><path d="M50 5C25 25 20 55 35 80c5-30 25-45 45-55-22 5-38 22-45 45C28 45 38 20 50 5z"/></svg>
+    <div class="eyebrow" style="color:#ffe2d3">Made for Ifunanya 💗</div>
+    <h1>Move gently,<br>eat well, mind<br>your heart.</h1>
+    <p>Hi Ifunanya — five low-impact days and Nigerian meals built around steady energy and a healthy blood pressure. One day at a time.</p>
+  </div>
+
+  <div class="weekstrip" id="weekstrip"></div>
+  <p class="muted" style="font-size:12.5px;text-align:center;margin:2px 0 0">Tap a day under <b>Move</b> to start. Green means done.</p>
+
+  <div class="section-title"><h2 id="todayTitle">Today</h2></div>
+  <div class="card" id="todayCard"></div>
+
+  <div class="card care-card alert" style="margin-top:16px">
+    <h3>💗 A gentle reminder</h3>
+    <p style="margin:0;font-size:14px;color:#5e4d59">Keep movement at a pace where you can still chat in short sentences, never hold your breath while pushing, and skip a session on any day you feel unwell or your reading is high. Full details are in <b>Care</b>.</p>
+  </div>
+</section>
+
+<!-- ================= MOVE ================= -->
+<section class="view" id="view-move">
+  <div class="section-title"><h2>Move</h2></div>
+  <p class="section-sub muted">Monday to Friday, low-impact. Cardio to burn fat, glute &amp; hip work to keep your curves, and calm sessions that are kind to blood pressure.</p>
+  <div id="workoutList"></div>
+
+  <div class="card care-card" style="margin-top:16px">
+    <h3>🌿 Weekend</h3>
+    <p style="margin:0;font-size:14px;color:#5e4d59">Rest, or take a relaxed 20–30 minute stroll. Recovery is when the body actually gets stronger — and it helps blood pressure too.</p>
+  </div>
+  <button class="reset" id="resetBtn">Reset this week's progress</button>
+</section>
+
+<!-- ================= EAT ================= -->
+<section class="view" id="view-eat">
+  <div class="section-title"><h2>Eat</h2></div>
+  <p class="section-sub muted">Real Nigerian food, lighter on salt and oil, built for steady weight loss. Nothing exotic to buy — just everyday meals, cooked a little smarter.</p>
+
+  <div class="card care-card">
+    <h3>🍲 House rules</h3>
+    <ul class="rules">
+      <li><span class="n">1</span><div><b>Tame the cubes.</b> Go easy on Maggi/Knorr — it's the biggest hidden salt. Flavour with onion, garlic, ginger, scent leaf, uziza, curry, thyme &amp; fresh pepper. Iru and crayfish in small amounts.</div></li>
+      <li><span class="n">2</span><div><b>Less salt on the plate</b> — taste before you reach for the shaker.</div></li>
+      <li><span class="n">3</span><div><b>Moderate the palm oil.</b> A little for flavour, not a flood.</div></li>
+      <li><span class="n">4</span><div><b>Smaller swallow.</b> Half a wrap of eba/amala/fufu; fill the plate with soup, veg &amp; protein instead.</div></li>
+      <li><span class="n">5</span><div><b>Brown beats white.</b> Ofada or brown rice over white when you can.</div></li>
+      <li><span class="n">6</span><div><b>Grill, boil, steam, roast</b> — limit deep-fried dodo, akara, puff-puff &amp; chin chin.</div></li>
+      <li><span class="n">7</span><div><b>Pile on veg</b> — ugu, efo, water leaf, okra, garden egg, tomatoes, peppers.</div></li>
+      <li><span class="n">8</span><div><b>Lean proteins.</b> Fish (great for the heart), skinless chicken, turkey, eggs, beans, moi moi. Easy on red meat, ponmo &amp; very salty dried fish.</div></li>
+      <li><span class="n">9</span><div><b>Potassium friends</b> help lower BP — plantain, beans, leafy greens, oranges, tomatoes, avocado pear (ube).</div></li>
+      <li><span class="n">10</span><div><b>Drink water.</b> Limit sugary minerals, malt &amp; alcohol.</div></li>
+    </ul>
+    <div style="margin-top:14px;font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">Build every plate like this</div>
+    <div class="plate"><span class="veg">½ Vegetables</span><span class="pro">¼ Protein</span><span class="carb">¼ Carb / swallow</span></div>
+  </div>
+
+  <div id="mealList"></div>
+
+  <div class="card care-card">
+    <h3>⏱️ Sunday prep, easy week</h3>
+    <ul class="care-list">
+      <li>Batch-steam a tray of <b>moi moi</b> and boil a pot of <b>beans</b> — grab-and-go protein.</li>
+      <li>Blend a big base of <b>pepper, tomato, onion</b> (no salt yet) for soups and sauces all week.</li>
+      <li>Grill or boil fish and chicken in batches; store in the fridge.</li>
+      <li>Par-boil <b>brown/ofada rice</b> and pre-cut veg so weeknight cooking is quick.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ================= CARE ================= -->
+<section class="view" id="view-care">
+  <div class="section-title"><h2>Care</h2></div>
+  <p class="section-sub muted">High blood pressure means a few simple guardrails. They keep movement safe and effective.</p>
+
+  <div class="card care-card">
+    <h3>✅ Before you start</h3>
+    <ul class="care-list">
+      <li>Get a quick OK from your doctor before beginning a new routine.</li>
+      <li>Keep taking any prescribed blood-pressure medication as directed.</li>
+      <li>Know your usual numbers, and check on days you feel off.</li>
+    </ul>
+  </div>
+
+  <div class="card care-card">
+    <h3>🫁 Every session</h3>
+    <ul class="care-list">
+      <li>Warm up 5 minutes, cool down 5 minutes — this prevents sudden pressure swings.</li>
+      <li><b>Breathe steadily. Never hold the breath</b> when straining — breathe out on the effort.</li>
+      <li>Keep a "talk-test" pace: able to chat in short sentences, not gasping.</li>
+      <li>Sip water throughout, and avoid the hottest part of the day.</li>
+      <li>Skip it and rest if you feel unwell, very tired, or your reading is high that day.</li>
+    </ul>
+  </div>
+
+  <div class="card care-card alert">
+    <h3>🚨 Stop and get help if</h3>
+    <p style="margin:0 0 4px;font-size:13.5px;color:#5e4d59">During or after exercise, any of these means stop right away and seek medical care:</p>
+    <ul class="care-list">
+      <li>Chest pain, pressure or tightness</li>
+      <li>Pain spreading to the arm, jaw or neck</li>
+      <li>Severe shortness of breath</li>
+      <li>Dizziness, fainting or sudden weakness</li>
+      <li>A sudden pounding headache or blurred vision</li>
+      <li>A racing or irregular heartbeat</li>
+    </ul>
+  </div>
+
+  <div class="card care-card">
+    <h3>🥗 Food &amp; blood pressure</h3>
+    <ul class="care-list">
+      <li>Lower salt is the single biggest lever — even halving it helps.</li>
+      <li>More veg and fruit, less fried and processed.</li>
+      <li>Aim for steady, gentle weight loss (about ½–1 kg a week). Slow lasts.</li>
+    </ul>
+  </div>
+
+  <p class="disclaimer">This app is general wellness guidance, not medical advice, diagnosis or treatment. It doesn't replace your doctor. Any medication, and any specific salt or calorie targets, should follow your doctor's advice. If you ever feel seriously unwell, seek medical help.</p>
+</section>
+
+<!-- ================= TAB BAR ================= -->
+<nav class="tabbar">
+  <button class="tab active" data-view="today">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5"/></svg>
+    <span>Today</span>
+  </button>
+  <button class="tab" data-view="move">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5 17.5 17.5"/><path d="M3 9l3-3 3 3M21 15l-3 3-3-3"/><path d="M4.5 7.5 7.5 4.5M16.5 19.5 19.5 16.5"/></svg>
+    <span>Move</span>
+  </button>
+  <button class="tab" data-view="eat">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v8a3 3 0 0 0 6 0V3M8 3v18"/><path d="M17 3c-1.5 1-2.5 3-2.5 6 0 2 1 3 2.5 3s2.5-1 2.5-3c0-3-1-5-2.5-6zM17 12v9"/></svg>
+    <span>Eat</span>
+  </button>
+  <button class="tab" data-view="care">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.5-9.5-9C1 9 2.5 5.5 6 5.5c2 0 3.2 1.2 4 2.3.8-1.1 2-2.3 4-2.3 3.5 0 5 3.5 3.5 6.5C19 16.5 12 21 12 21z"/></svg>
+    <span>Care</span>
+  </button>
+</nav>
+
+<script>
+/* ---------- data ---------- */
+const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const workouts = {
+  mon:{ dow:"MON", title:"Walk + Glow Glutes", dur:"~40 min",
+    why:"Steady walking burns fat while the booty work keeps your <b>hips and curves</b>.",
+    vids:[
+      {name:"30-min low-impact walk (weight-loss, beginner)", url:"https://www.youtube.com/watch?v=WCgeGhcpZ7g"},
+      {name:"8-min booty workout — no jumping, no squats", url:"https://www.nourishmovelove.com/8-minute-booty-workout-at-home/"}
+    ]},
+  tue:{ dow:"TUE", title:"Hips &amp; Glutes Sculpt", dur:"~25 min",
+    why:"Slow, controlled glute training <b>shapes the hips</b> without high impact.",
+    vids:[
+      {name:"20-min low-impact glute workout", url:"https://www.nourishmovelove.com/20-minute-glute-workout/"},
+      {name:"Gentle full-body stretch to finish", url:"https://www.youtube.com/watch?v=camy0PIKxwU"}
+    ]},
+  wed:{ dow:"WED", title:"Easy Walk + Stretch", dur:"~50 min",
+    why:"A lighter recovery day. Gentle cardio plus yoga is <b>especially good for blood pressure</b>.",
+    vids:[
+      {name:"30-min gentle walk (beginner / knee-friendly)", url:"https://www.youtube.com/watch?v=jRWKYOhcWWU"},
+      {name:"20-min calming yoga", url:"https://www.youtube.com/watch?v=camy0PIKxwU"}
+    ]},
+  thu:{ dow:"THU", title:"Walk + Glow Glutes", dur:"~40 min",
+    why:"Repeat of Monday — consistency is what burns fat and <b>builds the shape</b>.",
+    vids:[
+      {name:"30-min low-impact walking workout", url:"https://www.youtube.com/watch?v=pFvDf1dHoXo"},
+      {name:"8-min booty workout — no jumping", url:"https://www.nourishmovelove.com/8-minute-booty-workout-at-home/"}
+    ]},
+  fri:{ dow:"FRI", title:"Power Walk + Unwind", dur:"~50 min",
+    why:"A slightly brisker walk, then yoga to <b>recharge and relax</b> into the weekend.",
+    vids:[
+      {name:"30-min power-interval walk (beginner)", url:"https://www.youtube.com/watch?v=-30LmvW0S5s"},
+      {name:"20-min gentle yoga to recharge", url:"https://www.youtube.com/watch?v=HGONJZDUc6c"}
+    ]}
+};
+const cues = ["Warm up <b>5 min</b>","<b>Breathe out</b> on effort","Talk-test pace","Sip <b>water</b>","Cool down <b>5 min</b>"];
+
+const meals = {
+  mon:{dow:"MON", b:"Moi moi + a boiled egg; orange or pawpaw", l:"Efo riro (light oil) with skinless chicken or fish + ½ wrap eba", d:"Catfish or chicken pepper soup, with a few cubes of yam", s:"Unsalted groundnuts; cucumber slices"},
+  tue:{dow:"TUE", b:"Oats with banana/pawpaw + a few groundnuts (no sugar)", l:"Small ofada/brown rice + ayamase (less oil) + grilled fish + garden egg", d:"Edikang ikong or afang loaded with ugu &amp; water leaf + lean protein", s:"Tiger nuts; an orange"},
+  wed:{dow:"WED", b:"Boiled unripe plantain + garden-egg/veg sauce + boiled egg", l:"Beans porridge with spinach, light palm-oil drizzle + a piece of fish", d:"Grilled tilapia with pepper sauce + steamed veg / light coleslaw", s:"Watermelon; a few unsalted cashews"},
+  thu:{dow:"THU", b:"Akamu/pap (no sugar) + moi moi", l:"Okro soup (light oil) with lean protein + ½ wrap swallow", d:"Brown jollof (smaller portion, extra veg, less oil) + grilled chicken + side salad", s:"Avocado pear (ube); an orange"},
+  fri:{dow:"FRI", b:"Veg omelette (pepper, onion, tomato, ugu) + small boiled yam", l:"Egusi (moderate egusi &amp; oil), lots of veg + lean protein + ½ wrap swallow", d:"Catfish pepper soup + boiled unripe plantain", s:"A little coconut; pawpaw or pineapple"}
+};
+
+/* ---------- progress (saved on her phone) ---------- */
+function loadDone(){ try{ return JSON.parse(localStorage.getItem("bloom_done")||"{}"); }catch(e){ return {}; } }
+function saveDone(d){ try{ localStorage.setItem("bloom_done", JSON.stringify(d)); }catch(e){} }
+let done = loadDone();
+
+const order = ["mon","tue","wed","thu","fri"];
+const checkSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
+const playSVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z"/></svg>';
+const arrSVG  = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>';
+const ytSVG   = '<svg width="13" height="13" viewBox="0 0 24 24" fill="#C25540"><path d="M23 12s0-3.4-.4-5a2.6 2.6 0 0 0-1.8-1.8C19 4.8 12 4.8 12 4.8s-7 0-8.8.4A2.6 2.6 0 0 0 1.4 7C1 8.6 1 12 1 12s0 3.4.4 5a2.6 2.6 0 0 0 1.8 1.8c1.8.4 8.8.4 8.8.4s7 0 8.8-.4A2.6 2.6 0 0 0 22.6 17c.4-1.6.4-5 .4-5zM9.8 15.3V8.7l5.7 3.3z"/></svg>';
+
+function todayKey(){ const k = DOW[new Date().getDay()].toLowerCase(); return order.includes(k)?k:null; }
+
+/* ---------- render week strip ---------- */
+function renderWeek(){
+  const tk = DOW[new Date().getDay()].toLowerCase();
+  document.getElementById("weekstrip").innerHTML = order.map(k=>{
+    const lab = k[0].toUpperCase()+k.slice(1,3);
+    return `<div class="daydot ${k===tk?'today':''} ${done[k]?'done':''}">
+      <div class="d">${lab.toUpperCase()}</div>
+      <div class="ring">${checkSVG}</div></div>`;
+  }).join("");
+}
+
+/* ---------- workout card markup ---------- */
+function dayCard(k, open){
+  const w = workouts[k];
+  const vids = w.vids.map(v=>`
+    <a class="vid" href="${v.url}" target="_blank" rel="noopener">
+      <span class="play">${playSVG}</span>
+      <span class="vt"><span class="name">${v.name}</span><span class="src">${ytSVG} Opens video</span></span>
+      <span class="arr">${arrSVG}</span>
+    </a>`).join("");
+  return `<div class="card day ${open?'open':''}" data-day="${k}">
+    <div class="day-head">
+      <div class="pill"><span class="dow">${w.dow}</span></div>
+      <div class="meta"><h3>${w.title}</h3><div class="sub">${w.dur} · low impact</div></div>
+      <span class="chev"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+    </div>
+    <div class="card-body"><div class="card-body-inner">
+      <div class="why">${w.why}</div>
+      ${vids}
+      <div class="cues">${cues.map(c=>`<span class="cue">${c}</span>`).join("")}</div>
+      <button class="donebtn ${done[k]?'is-done':''}" data-done="${k}">
+        ${done[k]?'Done for today ✓':'Mark as done'}
+      </button>
+    </div></div>
+  </div>`;
+}
+
+function renderWorkouts(){
+  document.getElementById("workoutList").innerHTML = order.map(k=>dayCard(k,false)).join("");
+  bindDays(document.getElementById("workoutList"));
+}
+
+/* ---------- today card ---------- */
+function renderToday(){
+  const tk = todayKey();
+  const t = document.getElementById("todayTitle");
+  const c = document.getElementById("todayCard");
+  if(!tk){
+    t.textContent = "Rest day";
+    c.outerHTML = `<div class="card care-card" id="todayCard"><h3>🌿 Take it easy today</h3><p style="margin:0;font-size:14px;color:#5e4d59">It's the weekend — rest, or enjoy a relaxed 20–30 minute walk. The plan picks back up on Monday under <b>Move</b>.</p></div>`;
+    return;
+  }
+  t.textContent = "Today · " + DOW[new Date().getDay()];
+  c.outerHTML = dayCard(tk, true).replace('class="card day open"','class="card day open" id="todayCard"');
+  bindDays(document.getElementById("view-today"));
+}
+
+/* ---------- meals ---------- */
+function renderMeals(){
+  document.getElementById("mealList").innerHTML = order.map(k=>{
+    const m = meals[k];
+    const row = (ic,label,food)=>`<div class="meal"><div class="ic">${ic}</div><div class="mt"><div class="label">${label}</div><div class="food">${food}</div></div></div>`;
+    return `<div class="card day" data-day="m-${k}">
+      <div class="day-head">
+        <div class="pill"><span class="dow">${m.dow}</span></div>
+        <div class="meta"><h3>${["","Monday","Tuesday","Wednesday","Thursday","Friday"][order.indexOf(k)+1]}</h3><div class="sub">Breakfast · Lunch · Dinner · Snacks</div></div>
+        <span class="chev"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </div>
+      <div class="card-body"><div class="card-body-inner">
+        ${row("🌅","Breakfast",m.b)}
+        ${row("☀️","Lunch",m.l)}
+        ${row("🌙","Dinner",m.d)}
+        ${row("🍊","Snacks",m.s)}
+      </div></div>
+    </div>`;
+  }).join("");
+  bindDays(document.getElementById("mealList"));
+}
+
+/* ---------- interactions ---------- */
+function setBody(card){
+  const body = card.querySelector(".card-body");
+  if(card.classList.contains("open")){ body.style.maxHeight = body.scrollHeight + "px"; }
+  else { body.style.maxHeight = "0px"; }
+}
+function bindDays(root){
+  root.querySelectorAll(".day").forEach(card=>{
+    setBody(card);
+    const head = card.querySelector(".day-head");
+    head.addEventListener("click", ()=>{ card.classList.toggle("open"); setBody(card); });
+  });
+  root.querySelectorAll("[data-done]").forEach(btn=>{
+    btn.addEventListener("click",(e)=>{
+      e.stopPropagation();
+      const k = btn.getAttribute("data-done");
+      done[k] = !done[k]; saveDone(done);
+      renderWeek();
+      // refresh button states across views
+      document.querySelectorAll(`[data-done="${k}"]`).forEach(b=>{
+        b.classList.toggle("is-done", !!done[k]);
+        b.textContent = done[k] ? "Done for today ✓" : "Mark as done";
+      });
+      const card = btn.closest(".day"); if(card) setBody(card);
+    });
+  });
+}
+
+/* tabs */
+document.querySelectorAll(".tab").forEach(tab=>{
+  tab.addEventListener("click",()=>{
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById("view-"+tab.dataset.view).classList.add("active");
+    window.scrollTo({top:0,behavior:"instant"in window?"instant":"auto"});
+  });
+});
+
+document.getElementById("resetBtn").addEventListener("click",()=>{
+  done = {}; saveDone(done); renderWeek(); renderWorkouts(); renderToday();
+});
+
+/* init */
+renderWeek(); renderToday(); renderWorkouts(); renderMeals();
+
+/* offline */
+if("serviceWorker" in navigator){ navigator.serviceWorker.register("./sw.js").catch(()=>{}); }
+</script>
+</body>
+</html>
